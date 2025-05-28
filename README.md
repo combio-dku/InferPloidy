@@ -6,7 +6,7 @@
 ## Cite InferPloidy
 - "InferPloidy: A fast ploidy inference tool accurately classifies cells with abnormal CNVs in large single-cell RNA-seq datasets", available at [bioRxiv](https://doi.org/10.1101/2025.03.13.643178) 
 
-<img src="images/inferploidy.png" width="400"/>
+<img src="images/inferploidy.png" style="width:60%;"/>
 
 ## Installation using pip, importing inferploidy in Python
 
