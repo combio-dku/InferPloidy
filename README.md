@@ -20,7 +20,7 @@ Once it is installed using pip, you can import two functions using the following
 
 ## Example usage in Jupyter notebook
 
-`InferPloidy_example_py.ipynb` is example code in Jupyter notebook, where you can see how to import and run InferPloidy. 
+`inferPloidy_example.ipynb` is example code in Jupyter notebook, where you can see how to import and run InferPloidy. 
 
 To run HiCAT, you need the pre-installed python packages `numpy`, `pandas`, `scikit-learn`, `scipy`, `scikit-network`, `infercnvpy` and , `hicat`.
 `hicat` is used to annotate cell-type to collect reference cells for infercnv.
