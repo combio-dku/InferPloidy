@@ -1,5 +1,5 @@
 # InferPloidy
-Ploidy inference from CNV estimates
+![My Plot](images/inferploidy.png)
 
 ## Brief introduction
 - InferPloidy is a CNV-based, ploidy annotation tool for single-cell RNA-seq data.
