@@ -2,7 +2,6 @@ LICENSE
 MANIFEST.in
 README.md
 pyproject.toml
-setup.py
 src/inferploidy/__init__.py
 src/inferploidy/clustering.py
 src/inferploidy/inferploidy.py
