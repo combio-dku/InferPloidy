@@ -1,0 +1,48 @@
+Metadata-Version: 2.4
+Name: inferploidy
+Version: 0.2.5
+Summary: Tookits for Tumor cell identification in single-cell RNA-seq data
+Author-email: Seokhyun Yoon <syoon@dku.edu>
+License: MIT License
+        
+        Copyright (c) 2023 Seokhyun Yoon
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy of 
+        this software and associated documentation files (the “Software”), to deal in the
+        Software without restriction, including without limitation the rights to use, copy, 
+        modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
+        and to permit persons to whom the Software is furnished to do so, subject to the 
+        following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all copies 
+        or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+        INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+        PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+        HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
+        OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+        SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Project-URL: Homepage, https://github.com/combio-dku
+Keywords: single-cell omics,bioinformatics
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: dev
+Requires-Dist: numpy; extra == "dev"
+Requires-Dist: pandas; extra == "dev"
+Requires-Dist: scipy; extra == "dev"
+Requires-Dist: scikit-learn; extra == "dev"
+Requires-Dist: scikit-network; extra == "dev"
+Requires-Dist: infercnvpy; extra == "dev"
+Requires-Dist: scanpy; extra == "dev"
+Requires-Dist: seaborn; extra == "dev"
+Dynamic: license-file
+
+## MLBI_at_DKU_Lib 
+Tookits for Tumor cell identification in single-cell RNA-seq data.
+
+## Contact
+Send email to syoon@dku.edu for any inquiry on the usages.
+

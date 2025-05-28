@@ -1,0 +1,30 @@
+# pyproject.toml
+
+[build-system]
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inferploidy"
+version = "0.2.5"
+description = "Tookits for Tumor cell identification in single-cell RNA-seq data"
+readme = "README.md"
+authors = [{ name = "Seokhyun Yoon", email = "syoon@dku.edu" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["single-cell omics", "bioinformatics"]
+dependencies = [
+]
+# requires-python = "<3.11"
+
+[project.optional-dependencies]
+dev = ["numpy", "pandas", "scipy", "scikit-learn", "scikit-network", "infercnvpy", "scanpy", "seaborn"]
+
+[project.urls]
+Homepage = "https://github.com/combio-dku"
+
+[project.scripts]
+realpython = "reader.__main__:main"

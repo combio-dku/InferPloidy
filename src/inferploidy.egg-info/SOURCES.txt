@@ -1,0 +1,17 @@
+LICENSE
+MANIFEST.in
+README.md
+pyproject.toml
+setup.py
+src/inferploidy/__init__.py
+src/inferploidy/clustering.py
+src/inferploidy/inferploidy.py
+src/inferploidy/load_data.py
+src/inferploidy.egg-info/PKG-INFO
+src/inferploidy.egg-info/SOURCES.txt
+src/inferploidy.egg-info/dependency_links.txt
+src/inferploidy.egg-info/entry_points.txt
+src/inferploidy.egg-info/requires.txt
+src/inferploidy.egg-info/top_level.txt
+src/inferploidy/default_optional_files/hg38_gene_only.gtf
+src/inferploidy/default_optional_files/mm10_gene_only.gtf
