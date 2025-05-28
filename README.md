@@ -1,12 +1,12 @@
 # InferPloidy
-![My Plot](images/inferploidy.png)
-
 ## Brief introduction
 - InferPloidy is a CNV-based, ploidy annotation tool for single-cell RNA-seq data.
 - It works with the CNV-estimates obtained from [infercnv](https://github.com/icbi-lab/infercnvpy) .
 
 ## Cite InferPloidy
 - "InferPloidy: A fast ploidy inference tool accurately classifies cells with abnormal CNVs in large single-cell RNA-seq datasets", available at [bioRxiv](https://doi.org/10.1101/2025.03.13.643178) 
+
+![My Plot](images/inferploidy.png)
 
 ## Installation using pip, importing inferploidy in Python
 
