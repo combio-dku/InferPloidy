@@ -1,9 +1,6 @@
 # InferPloidy
 
-![PyPI Version](https://img.shields.io/pypi/v/inferploidy.svg)  ![PyPI Downloads](https://img.shields.io/pypi/dm/inferploidy.svg)  
-
-![PyPI](https://img.shields.io/pypi/v/inferploidy)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/inferploidy)
+![PyPI](https://img.shields.io/pypi/v/inferploidy) ![PyPI - Downloads](https://img.shields.io/pypi/dm/inferploidy)
 
 
 ## Brief introduction
