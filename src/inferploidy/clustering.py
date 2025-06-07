@@ -354,26 +354,6 @@ def update_cluster_sel_and_threshold(conns, conn_th, cluster_sel, cluster_seq):
     return update, conn_th, cluster_sel_new
 
 
-def initially_detect_major_clusters_old( adj_agg_mat, 
-                           cluster_size, n_neighbors, alpha = 0.08, 
-                           mode = 'sum', verbose = False ):
-
-    cluster_lst = list(np.arange(len(cluster_size)))
-    
-    selected_clusters = []
-    for c in cluster_lst:
-        seed_clusters = [c]
-        selected, maj, pairs, mets, threshs = \
-            extend_major_clusters( adj_agg_mat, seed_clusters, 
-                           cluster_size, n_neighbors, alpha = alpha, 
-                           mode = mode, verbose = verbose )
-        
-        if len(selected) > len(selected_clusters):
-            selected_clusters = copy.deepcopy(selected)
-            
-    return selected_clusters
-
-
 def get_normalized_agg_adj_mat( cluster_adj_mat, clust_size, n_neighbors = 10):
 
     cluster_adj_mat_nrom = cluster_adj_mat*1.0
