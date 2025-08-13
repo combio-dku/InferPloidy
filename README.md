@@ -1,6 +1,6 @@
 # InferPloidy
 
-![PyPI](https://img.shields.io/pypi/v/inferploidy) ![PyPI - Downloads](https://img.shields.io/pypi/dm/inferploidy)
+![PyPI](https://img.shields.io/pypi/v/inferploidy) [![Downloads](https://pepy.tech/badge/hicat)](https://pepy.tech/project/inferploidy) [![Downloads/Month](https://pepy.tech/badge/hicat/month)](https://pepy.tech/project/inferploidy)
 
 
 ## Brief introduction
