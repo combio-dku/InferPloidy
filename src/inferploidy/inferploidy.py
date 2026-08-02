@@ -45,6 +45,16 @@ except ImportError:
     UMAP_INSTALLED = False
 #'''
 
+#'''
+SCANPY_INSTALLED = True
+try:
+    import scanpy as sc
+except ImportError:
+    print('WARNING: scanpy not installed.')
+    SCANPY_INSTALLED = False
+#'''
+
+
 MIN_ABS_VALUE = 1e-8
 ANEUPLOID = 'Aneuploid'
 DIPLOID = 'Diploid'
@@ -216,7 +226,20 @@ def calculate_connectivity_threshold( connectivity_seq, no_cluster_sel, wgt = No
         c_odr = np.arange(p1, p2)
         
     # print(len(c_odr), len(conns_sel))
-    z = np.polyfit(c_odr, conns_sel, 1, w = wgt)
+    try:
+        if (len(c_odr) < 2) or (len(conns_sel) < 2) or (not np.all(np.isfinite(conns_sel))):
+            raise ValueError('Insufficient or non-finite connectivity values for threshold fitting.')
+        z = np.polyfit(c_odr, conns_sel, 1, w = wgt)
+    except Exception as e:
+        warnings.warn(
+            'Connectivity threshold fitting failed; using conn_th_min=%s. Original error: %s'
+            % (conn_th_min, e),
+            RuntimeWarning,
+        )
+        conns_est = np.full(len(conns), conn_th_min, dtype = float)
+        conns_sd = 0
+        return conn_th_min, conns_est, conns_sd
+
     p = np.poly1d(z)
 
     conns_est = p(c_odr)
@@ -304,6 +327,62 @@ def pca_subsample(Xx, N_components_pca, N_cells_max_for_pca = 100000):
     return X_pca
 
 
+def initially_detect_low_cnv_major_clusters( adj_agg_mat, cluster_size, cluster_label,
+                                             cnv_burden, n_neighbors = 14,
+                                             connectivity_thresh = 0.1,
+                                             net_search_mode = 'max',
+                                             min_candidate_fracs = (0.2, 0.1, 0.05),
+                                             verbose = False ):
+
+    cluster_label = np.array(cluster_label)
+    cnv_burden = np.array(cnv_burden)
+    total_cells = np.sum(cluster_size)
+    candidate_dct = {}
+
+    for c in range(len(cluster_size)):
+        merged_clusters, added_clusters, connectivities = \
+            merge_clusters_with_seed( adj_agg_mat, cluster_size, seed = [c],
+                                      n_neighbors = n_neighbors,
+                                      connectivity_thresh = connectivity_thresh,
+                                      net_search_mode = net_search_mode,
+                                      verbose = False)
+
+        candidate = tuple(sorted(merged_clusters))
+        if candidate in candidate_dct:
+            continue
+
+        b = pd.Series(cluster_label).isin(candidate).values
+        candidate_dct[candidate] = {
+            'clusters': [int(x) for x in candidate],
+            'size': int(np.sum(b)),
+            'size_frac': float(np.sum(b)/total_cells),
+            'cnv_burden_median': float(np.median(cnv_burden[b])),
+            'seed_cluster': int(c),
+        }
+
+    selected_info = None
+    for min_frac in min_candidate_fracs:
+        candidates = [v for v in candidate_dct.values() if v['size_frac'] >= min_frac]
+        if len(candidates) > 0:
+            candidates.sort(key = lambda x: (x['cnv_burden_median'], -x['size']))
+            selected_info = copy.deepcopy(candidates[0])
+            break
+
+    if selected_info is None:
+        cluster_sel = initially_detect_major_clusters( adj_agg_mat, cluster_size,
+                                      n_neighbors = n_neighbors,
+                                      connectivity_thresh = connectivity_thresh,
+                                      net_search_mode = net_search_mode, verbose = verbose )
+    else:
+        cluster_sel = selected_info['clusters']
+
+    if verbose:
+        print('Reference-free seed clusters selected by low CNV burden: %s'
+              % cluster_sel, flush = True)
+
+    return cluster_sel
+
+
 def inferploidy( X_cnv, X_pca = None, adj_dist = None, ref_ind = None, ## should be provided
                  Clustering_algo = 'lv', Clustering_resolution = 6, 
                  ref_pct_min = 0.25, dec_margin = 0.2, dec_margin_adj = 0.5, 
@@ -316,7 +395,8 @@ def inferploidy( X_cnv, X_pca = None, adj_dist = None, ref_ind = None, ## should
                  N_cells_max_for_clustering = 60000, N_cells_max_for_pca = 60000, 
                  N_clusters = 30, clust_labels = None, cnv_score = None, 
                  force_ref_to_diploid = True, reg_covar = 1e-6, cov_type = 'diag', 
-                 print_prefix = '   ', log_lines = '', aneup_wgt = 1 ):
+                 print_prefix = '   ', log_lines = '', aneup_wgt = 1,
+                 ref_free_min_candidate_fracs = (0.2, 0.1, 0.05) ):
 
     connectivity_thresh_org = connectivity_min
     connectivity_thresh = connectivity_min
@@ -373,7 +453,7 @@ def inferploidy( X_cnv, X_pca = None, adj_dist = None, ref_ind = None, ## should
     
     if adj_dist is None:
         adj_dist = kneighbors_graph(X_vec, int(n_neighbors), mode = 'distance', # 'connectivity', 
-                           include_self=True, n_jobs = 4)
+                           include_self=True, n_jobs = n_cores)
         
     neighbors, distances = get_neighbors(adj_dist, n_neighbors)
 
@@ -458,9 +538,11 @@ def inferploidy( X_cnv, X_pca = None, adj_dist = None, ref_ind = None, ## should
         
         df_stat = None
         if ref_ind is None: 
-            cluster_sel_org = initially_detect_major_clusters( cluster_adj_mat, cluster_size, 
-                                             n_neighbors = n_neighbors, connectivity_thresh = connectivity_thresh, 
-                                             net_search_mode = net_search_mode, verbose = verbose )
+            cluster_sel_org = initially_detect_low_cnv_major_clusters( cluster_adj_mat, cluster_size, y_clust, y_conf,
+                                             n_neighbors = n_neighbors, connectivity_thresh = connectivity_thresh,
+                                             net_search_mode = net_search_mode,
+                                             min_candidate_fracs = ref_free_min_candidate_fracs,
+                                             verbose = verbose )
             ref_ind = pd.Series(y_clust, index = X_cnv.index).isin(list(cluster_sel_org)) 
             force_ref_to_diploid = False
         else:
@@ -710,18 +792,95 @@ def inferploidy( X_cnv, X_pca = None, adj_dist = None, ref_ind = None, ## should
     etime = round(time.time() - start_time) 
     # if verbose: print('D(%i) .. ' % etime, end = '', flush = True) 
 
-    summary = {}
-    summary['connectivity_threshold'] = connectivity_thresh
-    summary['selected run'] = key
-    summary['run summary'] = res_lst
-
     etime = round(time.time() - start_time_a) 
         
-    return df_t, summary, cobj, X_pca, adj_dist, df_a
+    return df_t, X_pca
 
 
 import scanpy as sc
-import pkg_resources
+from importlib.resources import files
+
+def run_infercnv_old( adata, ref_key = None, ref_cat = None, 
+                  gtf_file = None, species = 'hs', 
+                  window_size = 100, n_cores = 4, log_transformed = False ):
+
+    """
+    Run infercnv py with the following parameters
+
+    Parameters:
+    adata: AnnData object for which the infercnvpy is run.
+    ref_key: reference_key(a column name in adata.obs) passed to infercnvpy.
+    ref_cat: reference_cat passed to infercnvpy. A list of categories in adata.obs[ref_key] to be used for indication of reference cells.
+    gtf_file: GTF files passed to infercnvpy. If none, 'species' must be specified.
+    species: must be either 'hs' (for human) or 'mm' (for mouse). If gtf_file is none, the function use the GTF files the package provides.
+    window_size: It is the window size passed to infercnvpy.
+    n_cores: The number of cores used to run infercnvpy.
+
+    Returns:
+    AnnData objects with 'cnv' added to adata.uns and 'X_cnv' to adata.obsm
+    """
+    
+    if gtf_file is None:
+        default_file_path = str( files('inferploidy').joinpath('default_optional_files') )
+        if species.lower() == 'hs':
+            gtf_file = '%s/hg38_gene_only.gtf' % (default_file_path)
+        elif species.lower() == 'mm':
+            gtf_file = '%s/mm10_gene_only.gtf' % (default_file_path)
+        else:
+            print('ERROR: species must be either hs or mm.')
+            return 
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+
+        if isinstance(ref_key, str) and (ref_key in adata.obs.columns):
+            ref_ind = adata.obs[ref_key].isin(ref_cat)
+        else:
+            ref_ind = pd.Series(False, index = adata.obs.index)
+
+        adata.obs['cnv_ref_ind'] = ref_ind
+        if np.sum(ref_ind) == 0:
+            ref_ind_key = None
+            ref_types = None
+        else:
+            ref_ind_key = 'cnv_ref_ind'
+            ref_types = [True]
+        
+        adata_tmp = adata[:,:]
+        if log_transformed:
+            pass
+        else:
+            if 'log1p' not in list(adata.uns.keys()):
+                sc.pp.normalize_total(adata_tmp, target_sum=1e4)
+                sc.pp.log1p(adata_tmp, base = 2)
+            elif adata_tmp.uns['log1p']['base'] is None:
+                adata_tmp.X.data = adata_tmp.X.data /np.log(2)
+            else:
+                adata_tmp.X.data = adata_tmp.X.data * (np.log(adata_tmp.uns['log1p']['base'])/np.log(2))
+        
+        try:
+            for key in ['chromosome', 'start', 'end', 'gene_id', 'gene_name']:
+                if key in list(adata_tmp.var.columns.values): 
+                    adata_tmp.var.drop(columns = key, inplace = True)  
+                    
+            cnv.io.genomic_position_from_gtf( gtf_file, adata_tmp, gtf_gene_id='gene_name', 
+                                              adata_gene_id=None, inplace=True)
+
+            cnv.tl.infercnv( adata_tmp, reference_key = ref_ind_key, reference_cat = ref_types, 
+                             window_size = window_size, n_jobs = n_cores)
+
+            for key in ['chromosome', 'start', 'end', 'gene_id', 'gene_name']:
+                adata.var[key] = adata_tmp.var[key]
+            adata.uns['cnv'] = adata_tmp.uns['cnv']
+            adata.obsm['X_cnv'] = adata_tmp.obsm['X_cnv']
+            adata.obs['cnv_ref_ind'] = adata.obs[ref_key].isin(ref_cat)
+            
+            return adata
+        except:
+            print('Error occurred when running infercnv.')
+            return None
+
+
 import collections
 
 GTF_line = collections.namedtuple('GTF_line', 'chr, src, feature, start, end, score, strand, frame, attr, gid, gname, tid, tname, eid, biotype')
@@ -842,11 +1001,27 @@ def set_chrom_and_pos( adata, gtf_file ):
     adata.var.loc[glstc, 'gene_id'] = df_gtf.loc[glstc, 'gid']
     
     return adata
+
+
+def ensure_infercnvpy_compatible_var( adata ):
+
+    adata.var_names = pd.Index(np.asarray(adata.var_names, dtype = str), dtype = object)
+
+    for key in ['chromosome', 'gene_id', 'gene_name']:
+        if key in adata.var.columns:
+            adata.var[key] = np.asarray(adata.var[key], dtype = str)
+
+    for key in ['start', 'end']:
+        if key in adata.var.columns:
+            adata.var[key] = pd.to_numeric(adata.var[key], errors = 'coerce').fillna(0).astype(np.int64)
+
+    return adata
     
 
 def run_infercnv( adata, ref_key = None, ref_cat = None, 
                   gtf_file = None, species = 'hs', 
-                  window_size = 100, n_cores = 4, log_transformed = False ):
+                  window_size = 100, n_cores = 4, log_transformed = False,
+                  dynamic_threshold = 1.5 ):
 
     """
     Run infercnv py with the following parameters
@@ -859,13 +1034,16 @@ def run_infercnv( adata, ref_key = None, ref_cat = None,
     species: must be either 'hs' (for human) or 'mm' (for mouse). If gtf_file is none, the function use the GTF files the package provides.
     window_size: It is the window size passed to infercnvpy.
     n_cores: The number of cores used to run infercnvpy.
+    dynamic_threshold: Passed to infercnvpy.tl.infercnv. Values below
+        dynamic_threshold * STDDEV are set to 0. Use None to disable this
+        inferCNVpy denoising threshold.
 
     Returns:
     AnnData objects with 'cnv' added to adata.uns and 'X_cnv' to adata.obsm
     """
     
     if gtf_file is None:
-        default_file_path = pkg_resources.resource_filename('inferploidy', 'default_optional_files')
+        default_file_path = str( files('inferploidy').joinpath('default_optional_files') )
         if species.lower() == 'hs':
             gtf_file = '%s/hg38_gene_only.gtf' % (default_file_path)
         elif species.lower() == 'mm':
@@ -877,7 +1055,11 @@ def run_infercnv( adata, ref_key = None, ref_cat = None,
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
 
-        ref_ind = adata.obs[ref_key].isin(ref_cat)   
+        if isinstance(ref_key, str) and (ref_key in adata.obs.columns) and (ref_cat is not None):
+            ref_ind = adata.obs[ref_key].isin(ref_cat)
+        else:
+            ref_ind = pd.Series(False, index = adata.obs.index)
+
         adata.obs['cnv_ref_ind'] = ref_ind
         if np.sum(ref_ind) == 0:
             ref_ind_key = None
@@ -899,15 +1081,21 @@ def run_infercnv( adata, ref_key = None, ref_cat = None,
                 adata_tmp.X.data = adata_tmp.X.data * (np.log(adata_tmp.uns['log1p']['base'])/np.log(2))
         
         adata_tmp = set_chrom_and_pos( adata_tmp, gtf_file )
+        adata_tmp = ensure_infercnvpy_compatible_var( adata_tmp )
 
         cnv.tl.infercnv( adata_tmp, reference_key = ref_ind_key, reference_cat = ref_types, 
-                            window_size = window_size, n_jobs = n_cores)
+                            window_size = window_size, n_jobs = n_cores,
+                            dynamic_threshold = dynamic_threshold)
 
         for key in ['chromosome', 'start', 'end', 'gene_id', 'gene_name']:
             adata.var[key] = adata_tmp.var[key]
         adata.uns['cnv'] = adata_tmp.uns['cnv']
+        adata.uns['infercnv_parameters'] = {
+            'window_size': window_size,
+            'dynamic_threshold': dynamic_threshold,
+        }
         adata.obsm['X_cnv'] = adata_tmp.obsm['X_cnv']
-        adata.obs['cnv_ref_ind'] = adata.obs[ref_key].isin(ref_cat)
+        adata.obs['cnv_ref_ind'] = ref_ind
         
         return adata
 
@@ -918,7 +1106,10 @@ def run_inferploidy( adata, X_cnv_key = 'X_cnv',
                      N_runs = 7,
                      n_pca_comp = 15, 
                      n_neighbors = 14,  
-                     clustering_resolution = 5 ):
+                     clustering_resolution = 5,
+                     dec_margin = 0.2,
+                     connectivity_min = 0.18,
+                     ref_free_min_candidate_fracs = (0.2, 0.1, 0.05) ):
 
     """
     Run infercnv py with the following parameters
@@ -934,6 +1125,10 @@ def run_inferploidy( adata, X_cnv_key = 'X_cnv',
     n_pca_comp (int): The number of PCA components for dimension reduction of CNV matrix.
     n_neighbors (int): The number of neighbors in the neighbor graph for Louvain clustering.
     clustering_resolution (positive real number): Clustering resolution for Louvain clustering.
+    dec_margin (float): The margin used to define unclear ploidy decisions.
+    connectivity_min (float): The minimum connectivity threshold for reference-cluster expansion.
+    ref_free_min_candidate_fracs (tuple of floats): Minimum candidate-size fractions
+        tried in order for low-CNV reference-free seed selection.
     
     Returns:
     AnnData objects with 'cnv' added to adata.uns and 'X_cnv' to adata.obsm
@@ -958,23 +1153,23 @@ def run_inferploidy( adata, X_cnv_key = 'X_cnv',
         print(s, flush = True)
         
     start_time_t = time.time()    
-    df_res, summary, cobj, X_pca, adj_dist, df_reachability_stat = \
-         inferploidy(  X_cnv, ref_ind = ref_ind, 
+    df_res, X_pca = inferploidy(  X_cnv, ref_ind = ref_ind, 
                        N_runs = N_runs,
                        n_cores = n_cores,                      
                        n_pca_comp = n_pca_comp, 
                        n_neighbors = n_neighbors, 
                        Clustering_resolution = clustering_resolution, 
                        force_ref_to_diploid = True,
-                       verbose = verbose, dec_margin = 0.2, 
-                       connectivity_min = 0.2 )
+                       verbose = verbose, dec_margin = dec_margin, 
+                       connectivity_min = connectivity_min,
+                       ref_free_min_candidate_fracs = ref_free_min_candidate_fracs )
     
     etime = round(time.time() - start_time_t) 
     if verbose: 
         s = 'InferPloidy .. done. (%i) ' % etime
         print(s, flush = True)
 
-    adata.obsm['%s_pca' % X_cnv_key] = X_pca    
+    adata.obsm['X_cnv_pca'] = X_pca
     if ref_ind is not None:
         adata.obs['cnv_ref_ind'] = list(ref_ind)
     else: 
@@ -984,11 +1179,132 @@ def run_inferploidy( adata, X_cnv_key = 'X_cnv',
     adata.obs['iploidy_dec'] = list(df_res['ploidy_dec'])
     adata.obs['iploidy_init_group'] = list(df_res['init_group'])
 
-    rend = dict(zip(df_res.index.values, adata.obs.index.values))
-    df_res.rename(index = rend, inplace = True)
-
-    adata.obsm['inferploidy_results'] = df_res 
-    adata.uns['inferploidy_summary'] = summary
-
     return adata
     
+
+def plot_cnv( adata, groupby = 'ploidy_dec', 
+              title = 'log2(CNR)', title_fs = 14, title_y_pos = 1.1, 
+              label_fs = 12, tick_fs = 12, figsize = (12, 6), swap_axes = False, 
+              var_group_rotation = 45, cmap='RdBu_r', vmax = 1, spot_llst = None,
+              cnv_obsm_key = 'X_cnv', cnv_uns_key = 'cnv', spot_resample = 100,
+              xlabel = 'Genomic spot', xtick_rot = 0, xtick_ha = 'center', 
+              show_ticks = True, alpha = 0.3 ):
+
+    if not SCANPY_INSTALLED:
+        print('SCANPY not installed. You need scanpy to plot CNV heatmap.')
+        return None
+        
+    X_cnv = adata.obsm[cnv_obsm_key]
+    chrs = np.array([' ']*X_cnv.shape[1])
+
+    if isinstance(cnv_uns_key, str):
+        
+        chr_pos = adata.uns[cnv_uns_key]['chr_pos']
+        df_chr_pos = pd.DataFrame({'chr_pos': list(chr_pos.values()), 'chr': list(chr_pos.keys()) }, index = chr_pos.keys())
+        df_chr_pos = df_chr_pos.sort_values('chr_pos')
+        # display(df_chr_pos)
+        
+        ## Get chromosome name for each loci in X_cnv
+        chrs = []
+        for i in range(df_chr_pos.shape[0]):
+            if i < (df_chr_pos.shape[0]-1):
+                start = df_chr_pos.iloc[i][0]
+                end = df_chr_pos.iloc[i+1][0]
+            else:
+                start = df_chr_pos.iloc[i][0]
+                end = X_cnv.shape[1]
+        
+            chrs = chrs + list([df_chr_pos.index.values[i]]*int(end-start))
+        
+        df_chr = pd.DataFrame({'chr': chrs})
+        
+        lst = list(df_chr_pos['chr']) # list(df_chr['chr'].unique())
+    
+        ## Get vg_pos & vg_labels
+        cnt = 0
+        vg_pos = []
+        vg_labels = []
+        for i in lst:
+            b = df_chr['chr'] == i
+            vg_pos.append((cnt+5, cnt+np.sum(b)-5))
+            vg_labels.append(i)
+            cnt += np.sum(b)
+        
+        ## Create AnnData for plot
+        ad = anndata.AnnData(X = X_cnv, var = df_chr, obs = adata.obs)
+    else:
+        vg_pos = None
+        vg_labels = None
+        ad = anndata.AnnData(X = X_cnv, obs = adata.obs)
+        
+    ad.var['spot_no'] = np.arange(len(ad.var.index.values))
+    ad.var['spot_no'] = ad.var['spot_no'].astype(str)
+    ad.var.set_index('spot_no', inplace = True)
+    
+    X = np.abs(ad.to_df())
+    vmax = X.quantile([0.99]).mean(axis = 1)*2
+
+    ax_dict = sc.pl.heatmap(ad, var_names = ad.var.index.values, groupby = groupby, 
+                            show = False, figsize = figsize, swap_axes = swap_axes, 
+                            var_group_positions = vg_pos, var_group_labels = vg_labels, 
+                            var_group_rotation = var_group_rotation, 
+                            cmap=cmap, vmax = vmax, vmin = -vmax, show_gene_labels = show_ticks)
+
+    if spot_llst is not None:
+        if isinstance(spot_llst, list):
+            nlst = []
+            for lst in spot_llst:
+                s = '%i ~ %i' % (lst[0], lst[-1])
+                nlst.append( s )
+            slst = spot_llst
+        else:
+            nlst = list(spot_llst.keys())
+            slst = list(spot_llst.values())
+                
+    ax_dict['heatmap_ax'].set_title(title, fontsize = title_fs, y = title_y_pos)
+    if swap_axes:
+        xtick_ha = 'right'
+        
+        if 'groupby_ax' in list(ax_dict.keys()):
+            ax_dict['groupby_ax'].set_xlabel(groupby, fontsize = label_fs)
+            ticks = ax_dict['groupby_ax'].get_xticklabels()
+            ax_dict['groupby_ax'].set_xticklabels(ticks, fontsize = tick_fs)
+        
+        if xlabel is not None:
+            ax_dict['heatmap_ax'].set_ylabel(xlabel, fontsize = label_fs)
+
+        x_ticks = np.arange(0, len(ad.var.index.values), spot_resample)
+        ax_dict['heatmap_ax'].set_yticks(x_ticks, x_ticks, rotation=xtick_rot, ha=xtick_ha, fontsize = tick_fs)
+
+        if spot_llst is not None:
+            for name, lst in zip (nlst, slst):
+                L = ad.obs.shape[0]
+                ax_dict['heatmap_ax'].add_patch(Rectangle((0, lst[0]), L, lst[-1]-lst[0], fill = True, 
+                                                           edgecolor = 'gold', facecolor = 'gold', 
+                                                           lw = 0.5, alpha = alpha))
+                ax_dict['heatmap_ax'].text(int(L*0.01), lst[0], name, fontsize = tick_fs, 
+                                           rotation = 0, va = 'center', ha = 'left')    
+        pass
+    else:
+        if 'groupby_ax' in list(ax_dict.keys()):
+            ax_dict['groupby_ax'].set_ylabel(groupby, fontsize = label_fs)
+            ticks = ax_dict['groupby_ax'].get_yticklabels()
+            ax_dict['groupby_ax'].set_yticklabels(ticks, fontsize = tick_fs)
+        
+        if xlabel is not None:
+            ax_dict['heatmap_ax'].set_xlabel(xlabel, fontsize = label_fs)
+
+        x_ticks = np.arange(0, len(ad.var.index.values), spot_resample)
+        ax_dict['heatmap_ax'].set_xticks(x_ticks, x_ticks, rotation=xtick_rot, ha=xtick_ha, fontsize = tick_fs)
+
+        if spot_llst is not None:
+            for name, lst in zip (nlst, slst):
+                L = ad.obs.shape[0]
+                ax_dict['heatmap_ax'].add_patch(Rectangle((lst[0], -0.5), lst[-1]-lst[0], L, fill = True, 
+                                                           edgecolor = 'gold', facecolor = 'gold', 
+                                                           lw = 0.5, alpha = 0.3))
+                ax_dict['heatmap_ax'].text(lst[0], int(L*0.01)-0.4, name, fontsize = tick_fs, 
+                                           rotation = -90, va = 'top', ha = 'left')        
+    
+    # plt.show()
+    return ax_dict

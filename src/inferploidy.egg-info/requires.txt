@@ -1,4 +1,6 @@
 
+infercnvpy>=0.6.1
+
 [dev]
 numpy
 pandas
