@@ -31,15 +31,18 @@ Classifier: Programming Language :: Python
 Classifier: Programming Language :: Python :: 3
 Description-Content-Type: text/markdown
 License-File: LICENSE
+Requires-Dist: numpy<2.3
+Requires-Dist: pandas<3
+Requires-Dist: matplotlib
+Requires-Dist: scipy
+Requires-Dist: scikit-learn
+Requires-Dist: anndata
+Requires-Dist: umap-learn
+Requires-Dist: scanpy
+Requires-Dist: scikit-network
 Requires-Dist: infercnvpy>=0.6.1
+Requires-Dist: numba<=0.65.1,>=0.58
 Provides-Extra: dev
-Requires-Dist: numpy; extra == "dev"
-Requires-Dist: pandas; extra == "dev"
-Requires-Dist: scipy; extra == "dev"
-Requires-Dist: scikit-learn; extra == "dev"
-Requires-Dist: scikit-network; extra == "dev"
-Requires-Dist: infercnvpy; extra == "dev"
-Requires-Dist: scanpy; extra == "dev"
 Requires-Dist: seaborn; extra == "dev"
 Dynamic: license-file
 
