@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: inferploidy
-Version: 0.3.7
+Version: 0.3.8
 Summary: Tookits for Tumor cell identification in single-cell RNA-seq data
 Author-email: Seokhyun Yoon <syoon@dku.edu>
 License: MIT License
@@ -31,15 +31,15 @@ Classifier: Programming Language :: Python
 Classifier: Programming Language :: Python :: 3
 Description-Content-Type: text/markdown
 License-File: LICENSE
-Requires-Dist: numpy<2.3
-Requires-Dist: pandas<3
+Requires-Dist: numpy<2.1,>=1.26
+Requires-Dist: pandas<2.3,>=2.0
 Requires-Dist: matplotlib
 Requires-Dist: gdown
 Requires-Dist: scipy
 Requires-Dist: scikit-learn
-Requires-Dist: anndata
+Requires-Dist: anndata<0.12,>=0.10
 Requires-Dist: umap-learn
-Requires-Dist: scanpy
+Requires-Dist: scanpy<1.12,>=1.10
 Requires-Dist: scikit-network
 Requires-Dist: infercnvpy>=0.6.1
 Requires-Dist: numba<=0.65.1,>=0.58
