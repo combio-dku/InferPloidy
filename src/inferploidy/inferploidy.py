@@ -1208,10 +1208,10 @@ def plot_cnv( adata, groupby = 'ploidy_dec',
         chrs = []
         for i in range(df_chr_pos.shape[0]):
             if i < (df_chr_pos.shape[0]-1):
-                start = df_chr_pos.iloc[i][0]
-                end = df_chr_pos.iloc[i+1][0]
+                start = df_chr_pos.iloc[i, 0]
+                end = df_chr_pos.iloc[i+1, 0]
             else:
-                start = df_chr_pos.iloc[i][0]
+                start = df_chr_pos.iloc[i, 0]
                 end = X_cnv.shape[1]
         
             chrs = chrs + list([df_chr_pos.index.values[i]]*int(end-start))

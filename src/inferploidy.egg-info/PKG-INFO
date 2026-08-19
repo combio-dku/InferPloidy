@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: inferploidy
-Version: 0.3.5
+Version: 0.3.7
 Summary: Tookits for Tumor cell identification in single-cell RNA-seq data
 Author-email: Seokhyun Yoon <syoon@dku.edu>
 License: MIT License
