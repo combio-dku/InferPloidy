@@ -1,6 +1,7 @@
 numpy<2.3
 pandas<3
 matplotlib
+gdown
 scipy
 scikit-learn
 anndata
