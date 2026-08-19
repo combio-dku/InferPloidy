@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "inferploidy"
-version = "0.3.10"
+version = "0.3.11"
 description = "Tookits for Tumor cell identification in single-cell RNA-seq data"
 readme = "README.md"
 authors = [{ name = "Seokhyun Yoon", email = "syoon@dku.edu" }]

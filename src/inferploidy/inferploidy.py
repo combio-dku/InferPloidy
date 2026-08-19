@@ -32,16 +32,16 @@ except ImportError:
 INFERCNVPY = True
 try:
     import infercnvpy as cnv
-except ImportError:
-    print('ERROR: infercnvpy not installed. Please install infercnvpy first to run inferploidy.')
+except Exception as e:
+    print(f'WARNING: infercnvpy is not available ({type(e).__name__}: {e}). run_infercnv requires infercnvpy.')
     INFERCNVPY = False
 
 #'''
 UMAP_INSTALLED = True
 try:
     import umap
-except ImportError:
-    print('WARNING: umap-learn not installed.')
+except Exception as e:
+    print(f'WARNING: umap-learn is not available ({type(e).__name__}: {e}). UMAP-dependent functions will be disabled.')
     UMAP_INSTALLED = False
 #'''
 
@@ -49,11 +49,21 @@ except ImportError:
 SCANPY_INSTALLED = True
 try:
     import scanpy as sc
-except ImportError:
-    print('WARNING: scanpy not installed.')
+except Exception as e:
+    print(f'WARNING: scanpy is not available ({type(e).__name__}: {e}). scanpy-dependent functions will be disabled.')
     SCANPY_INSTALLED = False
 #'''
 
+
+def _require_scanpy():
+    if not SCANPY_INSTALLED:
+        raise ImportError('scanpy is required for this function. Install a Colab-compatible scanpy stack or use precomputed CNV values.')
+    return sc
+
+def _require_infercnvpy():
+    if not INFERCNVPY:
+        raise ImportError('infercnvpy is required for run_infercnv. Use precomputed CNV values or install a compatible infercnvpy/scanpy stack.')
+    return cnv
 
 MIN_ABS_VALUE = 1e-8
 ANEUPLOID = 'Aneuploid'
@@ -797,7 +807,6 @@ def inferploidy( X_cnv, X_pca = None, adj_dist = None, ref_ind = None, ## should
     return df_t, X_pca
 
 
-import scanpy as sc
 from importlib.resources import files
 
 def run_infercnv_old( adata, ref_key = None, ref_cat = None, 
@@ -850,6 +859,7 @@ def run_infercnv_old( adata, ref_key = None, ref_cat = None,
         if log_transformed:
             pass
         else:
+            sc = _require_scanpy()
             if 'log1p' not in list(adata.uns.keys()):
                 sc.pp.normalize_total(adata_tmp, target_sum=1e4)
                 sc.pp.log1p(adata_tmp, base = 2)
@@ -859,6 +869,7 @@ def run_infercnv_old( adata, ref_key = None, ref_cat = None,
                 adata_tmp.X.data = adata_tmp.X.data * (np.log(adata_tmp.uns['log1p']['base'])/np.log(2))
         
         try:
+            cnv = _require_infercnvpy()
             for key in ['chromosome', 'start', 'end', 'gene_id', 'gene_name']:
                 if key in list(adata_tmp.var.columns.values): 
                     adata_tmp.var.drop(columns = key, inplace = True)  
@@ -1072,6 +1083,7 @@ def run_infercnv( adata, ref_key = None, ref_cat = None,
         if log_transformed:
             pass
         else:
+            sc = _require_scanpy()
             if 'log1p' not in list(adata.uns.keys()):
                 sc.pp.normalize_total(adata_tmp, target_sum=1e4)
                 sc.pp.log1p(adata_tmp, base = 2)
@@ -1083,6 +1095,7 @@ def run_infercnv( adata, ref_key = None, ref_cat = None,
         adata_tmp = set_chrom_and_pos( adata_tmp, gtf_file )
         adata_tmp = ensure_infercnvpy_compatible_var( adata_tmp )
 
+        cnv = _require_infercnvpy()
         cnv.tl.infercnv( adata_tmp, reference_key = ref_ind_key, reference_cat = ref_types, 
                             window_size = window_size, n_jobs = n_cores,
                             dynamic_threshold = dynamic_threshold)
@@ -1193,6 +1206,7 @@ def plot_cnv( adata, groupby = 'ploidy_dec',
     if not SCANPY_INSTALLED:
         print('SCANPY not installed. You need scanpy to plot CNV heatmap.')
         return None
+    sc = _require_scanpy()
         
     X_cnv = adata.obsm[cnv_obsm_key]
     chrs = np.array([' ']*X_cnv.shape[1])
