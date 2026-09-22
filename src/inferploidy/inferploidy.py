@@ -145,8 +145,8 @@ def calculate_tumor_score_gmm( X_cnv_df, b_ind_sel, b_ind_merged, b_ind_others,
         ref_maj_mean = maj_for_other[b1].mean()
         ref_maj_sd = maj_for_other[b1].std() + 1e-10
         
-        sf = 0.5 # (ref_maj_mean)/(ref_maj_sd)
-        th_maj = 0 # ref_maj_mean + ref_maj_sd*sf
+        sf = (ref_maj_mean)/(ref_maj_sd)
+        th_maj = ref_maj_mean + ref_maj_sd*sf
         uc_maj_lower = th_maj - ref_maj_sd*sf*uc_margin
         uc_maj_upper = th_maj + ref_maj_sd*sf*uc_margin
     
@@ -171,8 +171,8 @@ def calculate_tumor_score_gmm( X_cnv_df, b_ind_sel, b_ind_merged, b_ind_others,
         other_maj_mean = maj_for_other[b3].mean()
         other_maj_sd = maj_for_other[b3].std()
         
-        sf = 0.5 # (other_maj_mean - ref_maj_mean)/(ref_maj_sd + other_maj_sd)
-        th_maj = 0 # ref_maj_mean + ref_maj_sd*sf*(1/aneup_wgt)
+        sf = (other_maj_mean - ref_maj_mean)/(ref_maj_sd + other_maj_sd)
+        th_maj = ref_maj_mean + ref_maj_sd*sf*(1/aneup_wgt)
         uc_maj_lower = th_maj - ref_maj_sd*sf*uc_margin
         uc_maj_upper = th_maj + other_maj_sd*sf*uc_margin
 
