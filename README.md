@@ -8,7 +8,7 @@
 - It works with the CNV-estimates obtained from [infercnv](https://github.com/broadinstitute/inferCNV/wiki), or [infercnvpy](https://github.com/icbi-lab/infercnvpy) .
 
 ## Cite InferPloidy
-- "InferPloidy: A fast ploidy inference tool accurately classifies cells with abnormal CNVs in large single-cell RNA-seq datasets", available at [bioRxiv](https://doi.org/10.1101/2025.03.13.643178) 
+- "InferPloidy enables CNV guided tumor cell stratification and biomarker discovery from single cell RNA sequencing", available at [Communications Biology Nov 2026]([https://doi.org/10.1101/2025.03.13.643178](https://doi.org/10.1038/s42003-026-11298-2)) 
 
 <div align="center">
   <img src="https://github.com/combio-dku/inferploidy/blob/main/images/inferploidy.png" style="width:80%;"/>
